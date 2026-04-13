@@ -1,0 +1,47 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: springboot4-mcp-platform
+  datasource:
+    url: jdbc:h2:mem:mcp-platform;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: springboot4-mcp-platform
+        version: 1.0.0
+        protocol: STREAMABLE
+        type: SYNC
+management:
+  observations:
+    annotations:
+      enabled: true
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+migration:
+  flags:
+    user-source-new: false
+    order-source-new: false
+
+legacy:
+  base-url: http://localhost:8088
+  connect-timeout: 3s
+  read-timeout: 10s
+
+logging:
+  level:
+    root: INFO
+    com.example.mcp: INFO

@@ -1,0 +1,13 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+migration:
+  flags:
+    user-source-new: true
+    order-source-new: true
+
+logging:
+  level:
+    com.example.mcp: DEBUG
