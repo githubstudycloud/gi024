@@ -1,8 +1,10 @@
 package com.example.mcp.acl.adapter;
 
+import com.example.mcp.acl.config.LegacySystemProperties;
+import com.example.mcp.acl.dto.LegacyEnvelopeResponse;
 import com.example.mcp.acl.dto.LegacyOrderItemResponse;
-import com.example.mcp.acl.dto.LegacyOrderPageResponse;
-import com.example.mcp.acl.dto.LegacyPendingOrderCountResponse;
+import com.example.mcp.acl.dto.LegacyOrderPagePayload;
+import com.example.mcp.acl.dto.LegacyPendingOrderCountPayload;
 import com.example.mcp.acl.mapper.LegacyOrderMapper;
 import com.example.mcp.domain.common.ItemResult;
 import com.example.mcp.domain.common.PageResult;
@@ -30,40 +32,54 @@ public class LegacyOrderRestClient implements LegacyOrderGateway {
 
     private final RestClient legacyRestClient;
     private final LegacyOrderMapper legacyOrderMapper;
+    private final LegacySystemProperties legacySystemProperties;
 
-    public LegacyOrderRestClient(RestClient legacyRestClient, LegacyOrderMapper legacyOrderMapper) {
+    public LegacyOrderRestClient(
+            RestClient legacyRestClient,
+            LegacyOrderMapper legacyOrderMapper,
+            LegacySystemProperties legacySystemProperties
+    ) {
         this.legacyRestClient = legacyRestClient;
         this.legacyOrderMapper = legacyOrderMapper;
+        this.legacySystemProperties = legacySystemProperties;
     }
 
     @Override
     public PageResult<OrderRecord> search(String query, String status, int page, int size) {
         try {
-            LegacyOrderPageResponse response = legacyRestClient.get()
+            LegacyEnvelopeResponse<LegacyOrderPagePayload> response = legacyRestClient.get()
                     .uri(uriBuilder -> {
-                        uriBuilder.path("/api/orders")
+                        uriBuilder.path(legacySystemProperties.getOrder().getSearchPath())
                                 .queryParam("q", query)
-                                .queryParam("page", page)
-                                .queryParam("size", size);
+                                .queryParam("pageNo", page + 1)
+                                .queryParam("pageSize", size);
                         if (StringUtils.hasText(status)) {
                             uriBuilder.queryParam("status", status);
                         }
                         return uriBuilder.build();
                     })
                     .retrieve()
-                    .body(LegacyOrderPageResponse.class);
+                    .body(new org.springframework.core.ParameterizedTypeReference<LegacyEnvelopeResponse<LegacyOrderPagePayload>>() {
+                    });
 
-            if (response == null) {
+            if (response == null || response.data() == null) {
                 throw new LegacySystemException(502, "旧系统返回空订单分页响应", "LEGACY_EMPTY_ORDER_PAGE");
             }
+            assertSuccess(response.code(), response.message(), "LEGACY_ORDER_PAGE_CODE_ERROR");
 
-            List<OrderRecord> items = Optional.ofNullable(response.data())
+            List<OrderRecord> items = Optional.ofNullable(response.data().records())
                     .orElseGet(List::of)
                     .stream()
                     .map(legacyOrderMapper::toOrderRecord)
                     .toList();
 
-            return new PageResult<>(items, response.page(), response.size(), response.total(), ServedBy.LEGACY);
+            return new PageResult<>(
+                    items,
+                    Math.max(response.data().pageNo() - 1, 0),
+                    response.data().pageSize(),
+                    response.data().totalCount(),
+                    ServedBy.LEGACY
+            );
         } catch (RestClientResponseException ex) {
             throw toLegacyException(ex);
         } catch (RestClientException ex) {
@@ -74,16 +90,18 @@ public class LegacyOrderRestClient implements LegacyOrderGateway {
     @Override
     public Optional<ItemResult<OrderRecord>> findById(String id) {
         try {
-            LegacyOrderItemResponse response = legacyRestClient.get()
-                    .uri("/api/orders/{id}", id)
+            LegacyEnvelopeResponse<LegacyOrderItemResponse> response = legacyRestClient.get()
+                    .uri(legacySystemProperties.getOrder().getDetailPath(), id)
                     .retrieve()
-                    .body(LegacyOrderItemResponse.class);
+                    .body(new org.springframework.core.ParameterizedTypeReference<LegacyEnvelopeResponse<LegacyOrderItemResponse>>() {
+                    });
 
-            if (response == null) {
+            if (response == null || response.data() == null) {
                 return Optional.empty();
             }
+            assertSuccess(response.code(), response.message(), "LEGACY_ORDER_DETAIL_CODE_ERROR");
 
-            return Optional.of(new ItemResult<>(legacyOrderMapper.toOrderRecord(response), ServedBy.LEGACY));
+            return Optional.of(new ItemResult<>(legacyOrderMapper.toOrderRecord(response.data()), ServedBy.LEGACY));
         } catch (RestClientResponseException ex) {
             if (ex.getStatusCode().value() == 404) {
                 return Optional.empty();
@@ -97,16 +115,18 @@ public class LegacyOrderRestClient implements LegacyOrderGateway {
     @Override
     public PendingOrderCount countPendingOrders() {
         try {
-            LegacyPendingOrderCountResponse response = legacyRestClient.get()
-                    .uri("/api/orders/pending-count")
+            LegacyEnvelopeResponse<LegacyPendingOrderCountPayload> response = legacyRestClient.get()
+                    .uri(legacySystemProperties.getOrder().getPendingCountPath())
                     .retrieve()
-                    .body(LegacyPendingOrderCountResponse.class);
+                    .body(new org.springframework.core.ParameterizedTypeReference<LegacyEnvelopeResponse<LegacyPendingOrderCountPayload>>() {
+                    });
 
-            if (response == null) {
+            if (response == null || response.data() == null) {
                 throw new LegacySystemException(502, "旧系统返回空订单统计响应", "LEGACY_EMPTY_ORDER_COUNT");
             }
+            assertSuccess(response.code(), response.message(), "LEGACY_ORDER_COUNT_CODE_ERROR");
 
-            return new PendingOrderCount(response.pendingOrders(), ServedBy.LEGACY);
+            return new PendingOrderCount(response.data().pendingCount(), ServedBy.LEGACY);
         } catch (RestClientResponseException ex) {
             throw toLegacyException(ex);
         } catch (RestClientException ex) {
@@ -120,5 +140,11 @@ public class LegacyOrderRestClient implements LegacyOrderGateway {
                 "旧系统订单调用失败: HTTP " + ex.getStatusCode().value(),
                 "LEGACY_ORDER_HTTP_" + ex.getStatusCode().value()
         );
+    }
+
+    private void assertSuccess(String code, String message, String legacyCode) {
+        if (!legacySystemProperties.getSuccessCode().equals(code)) {
+            throw new LegacySystemException(502, "旧系统订单返回业务失败: " + message, legacyCode);
+        }
     }
 }

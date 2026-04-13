@@ -2,6 +2,7 @@ package com.example.mcp.rest.exception;
 
 import com.example.mcp.domain.exception.LegacySystemException;
 import com.example.mcp.domain.exception.OrderNotFoundException;
+import com.example.mcp.domain.exception.ProductNotFoundException;
 import com.example.mcp.domain.exception.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -26,6 +27,13 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleOrderNotFound(OrderNotFoundException ex) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         detail.setTitle("订单不存在");
+        return detail;
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ProblemDetail handleProductNotFound(ProductNotFoundException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        detail.setTitle("商品不存在");
         return detail;
     }
 

@@ -1,12 +1,12 @@
 spring:
   jpa:
-    hibernate:
-      ddl-auto: create-drop
+    show-sql: true
 
 migration:
   flags:
     user-source-new: true
     order-source-new: true
+    product-source-new: true
 
 logging:
   level:

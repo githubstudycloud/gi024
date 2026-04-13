@@ -1,11 +1,11 @@
 package com.example.mcp.acl.adapter;
 
 import com.example.mcp.acl.config.LegacySystemProperties;
-import com.example.mcp.acl.mapper.LegacyOrderMapper;
+import com.example.mcp.acl.mapper.LegacyProductMapper;
 import com.example.mcp.domain.common.PageResult;
 import com.example.mcp.domain.common.ServedBy;
 import com.example.mcp.domain.exception.LegacySystemException;
-import com.example.mcp.domain.model.OrderRecord;
+import com.example.mcp.domain.model.ProductRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -20,23 +20,25 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-class LegacyOrderRestClientTest {
+class LegacyProductRestClientTest {
 
-    private LegacyOrderRestClient legacyOrderRestClient;
+    private LegacyProductRestClient legacyProductRestClient;
     private MockRestServiceServer mockServer;
-    private LegacySystemProperties legacySystemProperties;
 
     @BeforeEach
     void setUp() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://legacy.example");
         mockServer = MockRestServiceServer.bindTo(builder).build();
-        legacySystemProperties = new LegacySystemProperties();
-        legacyOrderRestClient = new LegacyOrderRestClient(builder.build(), new LegacyOrderMapper(), legacySystemProperties);
+        legacyProductRestClient = new LegacyProductRestClient(
+                builder.build(),
+                new LegacyProductMapper(),
+                new LegacySystemProperties()
+        );
     }
 
     @Test
-    void shouldMapLegacyOrderToDomainModel() {
-        mockServer.expect(requestTo("http://legacy.example/legacy-api/orders/page?q=acme&pageNo=1&pageSize=20"))
+    void shouldMapLegacyProductToDomainModel() {
+        mockServer.expect(requestTo("http://legacy.example/legacy-api/products/page?q=analytics&pageNo=1&pageSize=20"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {
@@ -45,12 +47,13 @@ class LegacyOrderRestClientTest {
                           "data": {
                             "records": [
                               {
-                                "order_id": "o-1",
-                                "order_code": "SO-2026-0001",
-                                "customer_name": "Acme Corp",
-                                "status": "PENDING",
-                                "amount": 2999.50,
+                                "product_id": "p-1",
+                                "product_code": "PRD-2026-0001",
+                                "product_name": "Analytics Suite",
+                                "category_name": "SOFTWARE",
+                                "sale_price": 4999.00,
                                 "currency": "CNY",
+                                "enabled": true,
                                 "gmt_create": "2026-04-01 09:30:00"
                               }
                             ],
@@ -61,39 +64,38 @@ class LegacyOrderRestClientTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        PageResult<OrderRecord> result = legacyOrderRestClient.search("acme", null, 0, 20);
+        PageResult<ProductRecord> result = legacyProductRestClient.search("analytics", null, 0, 20);
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.servedBy()).isEqualTo(ServedBy.LEGACY);
-        assertThat(result.items().getFirst().orderNo()).isEqualTo("SO-2026-0001");
-        mockServer.verify();
+        assertThat(result.items().getFirst().productCode()).isEqualTo("PRD-2026-0001");
     }
 
     @Test
     void shouldThrowLegacySystemExceptionWhenUpstreamFails() {
-        mockServer.expect(requestTo("http://legacy.example/legacy-api/orders/page?q=acme&pageNo=1&pageSize=20"))
+        mockServer.expect(requestTo("http://legacy.example/legacy-api/products/page?q=analytics&pageNo=1&pageSize=20"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withServerError());
 
-        assertThatThrownBy(() -> legacyOrderRestClient.search("acme", null, 0, 20))
+        assertThatThrownBy(() -> legacyProductRestClient.search("analytics", null, 0, 20))
                 .isInstanceOf(LegacySystemException.class)
-                .hasMessageContaining("旧系统订单调用失败");
+                .hasMessageContaining("旧系统商品调用失败");
     }
 
     @Test
-    void shouldReadPendingOrderCountFromDedicatedEndpoint() {
-        mockServer.expect(requestTo("http://legacy.example/legacy-api/orders/statistics/pending"))
+    void shouldReadActiveProductCountFromDedicatedEndpoint() {
+        mockServer.expect(requestTo("http://legacy.example/legacy-api/products/statistics/active"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {
                           "code": "0000",
                           "message": "success",
                           "data": {
-                            "pendingCount": 7
+                            "activeCount": 15
                           }
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        assertThat(legacyOrderRestClient.countPendingOrders().count()).isEqualTo(7);
+        assertThat(legacyProductRestClient.countActiveProducts().count()).isEqualTo(15);
     }
 }

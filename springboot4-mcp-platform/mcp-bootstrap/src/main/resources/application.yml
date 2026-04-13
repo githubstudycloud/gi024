@@ -5,14 +5,22 @@ spring:
   application:
     name: springboot4-mcp-platform
   datasource:
-    url: jdbc:h2:mem:mcp-platform;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${APP_DB_URL:jdbc:postgresql://localhost:5432/mcp_platform}
+    username: ${APP_DB_USERNAME:postgres}
+    password: ${APP_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   ai:
     mcp:
       server:
@@ -35,11 +43,21 @@ migration:
   flags:
     user-source-new: false
     order-source-new: false
+    product-source-new: false
 
 legacy:
   base-url: http://localhost:8088
   connect-timeout: 3s
   read-timeout: 10s
+  success-code: "0000"
+  order:
+    search-path: /legacy-api/orders/page
+    detail-path: /legacy-api/orders/{id}
+    pending-count-path: /legacy-api/orders/statistics/pending
+  product:
+    search-path: /legacy-api/products/page
+    detail-path: /legacy-api/products/{id}
+    active-count-path: /legacy-api/products/statistics/active
 
 logging:
   level:

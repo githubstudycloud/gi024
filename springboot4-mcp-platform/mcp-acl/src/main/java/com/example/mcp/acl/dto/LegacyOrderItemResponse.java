@@ -8,18 +8,19 @@ import java.math.BigDecimal;
  * 旧系统返回的单个订单 DTO。
  */
 public record LegacyOrderItemResponse(
+        @JsonProperty("order_id")
         String id,
-        @JsonProperty("order_no")
+        @JsonProperty("order_code")
         String orderNo,
         @JsonProperty("customer_name")
         String customerName,
-        @JsonProperty("order_status")
+        @JsonProperty("status")
         String status,
-        @JsonProperty("total_amount")
+        @JsonProperty("amount")
         BigDecimal amount,
-        @JsonProperty("currency_code")
+        @JsonProperty("currency")
         String currency,
-        @JsonProperty("create_time")
+        @JsonProperty("gmt_create")
         String createdAt
 ) {
 }

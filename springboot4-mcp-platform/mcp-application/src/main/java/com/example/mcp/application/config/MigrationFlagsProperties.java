@@ -18,6 +18,11 @@ public class MigrationFlagsProperties {
      */
     private boolean orderSourceNew;
 
+    /**
+     * 是否启用商品域新数据源。
+     */
+    private boolean productSourceNew;
+
     public boolean isUserSourceNew() {
         return userSourceNew;
     }
@@ -32,5 +37,13 @@ public class MigrationFlagsProperties {
 
     public void setOrderSourceNew(boolean orderSourceNew) {
         this.orderSourceNew = orderSourceNew;
+    }
+
+    public boolean isProductSourceNew() {
+        return productSourceNew;
+    }
+
+    public void setProductSourceNew(boolean productSourceNew) {
+        this.productSourceNew = productSourceNew;
     }
 }
