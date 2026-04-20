@@ -1,5 +1,18 @@
 # Spring Boot 4.x 企业级技术文档
 
+## 目录
+
+1. 文档概述
+2. 项目概述
+3. 安装与配置
+4. 核心能力与模块说明
+5. API 接口说明
+6. 代码示例
+7. 开发与运维建议
+8. 常见问题解答
+9. 版本更新记录
+10. 文档维护说明
+
 ## 1. 文档概述
 
 本文档面向使用 Spring Boot 4.x 构建企业级应用的开发团队，提供一份可直接复用的技术基线说明。内容覆盖项目概述、环境准备、安装与配置、典型 API 设计、代码示例、常见问题以及版本更新记录，适合作为团队内部知识库或项目初始化文档。
@@ -474,6 +487,7 @@ public interface UserService {
 ```java
 package com.example.enterprise.client;
 
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 
@@ -481,7 +495,7 @@ import org.springframework.web.service.annotation.HttpExchange;
 public interface UserHttpClient {
 
     @GetExchange("/{id}")
-    String getUserById(Long id);
+    String getUserById(@PathVariable Long id);
 }
 ```
 
